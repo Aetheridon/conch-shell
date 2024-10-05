@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 
 int sh_loop(void);
+void sigint_handler(int sig_num);
 
 int main(int argc, char *argv[])
 {
@@ -12,6 +14,9 @@ int main(int argc, char *argv[])
 
 int sh_loop(void)
 {
+
+    signal(SIGINT, sigint_handler);
+
     while (1)
     {
         char cmd[100];
@@ -36,4 +41,11 @@ int sh_loop(void)
 
     return 0;
 
+}
+
+void sigint_handler(int sig_num)
+{
+    // Cleanup for sigint.
+    printf("\nExiting...\n");
+    exit(0);
 }
