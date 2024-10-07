@@ -3,6 +3,8 @@
 #include <string.h>
 #include <signal.h>
 
+#include "forkexec.h"
+
 int sh_loop(void);
 void sigint_handler(int sig_num);
 
@@ -21,7 +23,9 @@ int sh_loop(void)
     {
         char cmd[100];
 
-        printf("\n$ ");
+        wait(0);
+
+        printf("$ ");
 
         if (fgets(cmd, sizeof(cmd), stdin) == NULL)
         {
@@ -36,14 +40,15 @@ int sh_loop(void)
             return 0;
         }
 
-        printf("%s", cmd);
+        startup_cmd(cmd);
+
     }
 
     return 0;
 
 }
 
-void sigint_handler(int sig_num)
+void sigint_handler(int sig_num) //TODO: move to separate file.
 {
     // Cleanup for sigint.
     printf("\nExiting...\n");
