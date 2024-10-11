@@ -6,8 +6,28 @@
 
 #include "forkexec.h"
 
-void startup_cmd(char cmd[])
+void tokenize(char **args, char *cmd)
 {
+    int arg_count = 0;    
+
+    char *token = strtok(cmd, " ");
+
+    while (token != NULL && arg_count < MAX_ARGS - 1) {
+        args[arg_count] = token;
+        arg_count++;
+        token = strtok(NULL, " "); // proceeds to point to the next token.
+    }
+
+    args[arg_count] = NULL;
+
+}
+
+void startup_cmd(char *cmd)
+{
+    char *args[MAX_ARGS];
+
+    tokenize(args, cmd);
+
     pid_t pid = fork();
 
     if (pid < 0)
@@ -23,8 +43,7 @@ void startup_cmd(char cmd[])
         sprintf(cmd_path, "/bin/%s", cmd);
 
         // ensures we are the child process.
-        // example syntax: if (execl("/bin/ls", "ls", "-l", NULL) == -1) 
-        if (execl(cmd_path, cmd, NULL) == -1) //TODO: check /bin/ and /usr/bin/, implement arguments
+        if (execv(cmd_path, args) == -1) //TODO: check /bin/ and /usr/bin/
         {
             perror("Failed to execl command\n");
             exit(1);

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 #include "forkexec.h"
 
@@ -21,7 +22,7 @@ int sh_loop(void)
 
     while (1)
     {
-        char cmd[100];
+        char cmd[MAX_CMD_LEN];
 
         wait(0);
 
