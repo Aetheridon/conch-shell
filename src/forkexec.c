@@ -3,6 +3,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #include "forkexec.h"
 
@@ -19,15 +20,10 @@ void tokenize(char **args, char *cmd)
     }
 
     args[arg_count] = NULL;
-
 }
 
-void startup_cmd(char *cmd)
+void startup_cmd(char **args)
 {
-    char *args[MAX_ARGS];
-
-    tokenize(args, cmd);
-
     pid_t pid = fork();
 
     if (pid < 0)
@@ -36,17 +32,17 @@ void startup_cmd(char *cmd)
         exit(1);
     }
 
-    if (pid == 0)
+    if (pid == 0) // fork returns 0 if we're the child process
     {
-
-        char cmd_path[150];
-        sprintf(cmd_path, "/bin/%s", cmd);
-
-        // ensures we are the child process.
-        if (execv(cmd_path, args) == -1) //TODO: check /bin/ and /usr/bin/
+        if (execvp(args[0], args) == -1)
         {
-            perror("Failed to execl command\n");
+            perror("Failed to execute command\n");
             exit(1);
         }
+    }
+
+    else
+    {
+        wait(NULL);
     }
 }

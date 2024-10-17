@@ -3,8 +3,10 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "forkexec.h"
+#include "builtin.h"
 
 int sh_loop(void);
 void sigint_handler(int sig_num);
@@ -17,16 +19,24 @@ int main(int argc, char *argv[])
 
 int sh_loop(void)
 {
-
     signal(SIGINT, sigint_handler);
 
     while (1)
     {
         char cmd[MAX_CMD_LEN];
+        char *args[MAX_ARGS];
+        char cwd[1024];
 
-        wait(0);
+        if (getcwd(cwd, sizeof(cwd)) != NULL)
+        {
+            printf("%s$ ", cwd);
+        }
 
-        printf("$ ");
+        else
+        {
+            perror("getcwd() error");
+            printf("$ ");
+        }
 
         if (fgets(cmd, sizeof(cmd), stdin) == NULL)
         {
@@ -36,17 +46,28 @@ int sh_loop(void)
 
         cmd[strcspn(cmd, "\n")] = 0; 
 
-        if (strcmp(cmd, "exit") == 0)
+        tokenize(args, cmd);
+
+        if (args[0] == NULL) continue;
+
+        if (strcmp(args[0], "exit") == 0)
         {
             return 0;
         }
 
-        startup_cmd(cmd);
+        else if (strcmp(args[0], "cd") == 0)
+        {
+            cd(args);   
+        }
+
+        else
+        {
+            startup_cmd(args);
+        }
 
     }
 
     return 0;
-
 }
 
 void sigint_handler(int sig_num) //TODO: move to separate file.

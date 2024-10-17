@@ -1,15 +1,16 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=gnu17
 TARGET = conch
-SRCS = conch.c forkexec.c
+SRCS = conch.c forkexec.c builtin.c
 OBJS = $(SRCS:.c=.o)
+HEADERS = forkexec.h builtin.h
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
-%.o: %.c
+%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $<
 
 clean:
