@@ -1,5 +1,8 @@
 # 🐚 Conch
 
+![spongebob-spongebob-squarepants](https://github.com/user-attachments/assets/fa8a9eb3-ea30-4937-9ba2-88dee0c84e90)
+
+
 A lightweight, efficient shell implementation written in pure C.
 
 ## Features
