@@ -33,7 +33,7 @@ void startup_cmd(char **args)
     }
 
     if (pid == 0) // fork returns 0 if we're the child process
-    {
+    {   
         if (execvp(args[0], args) == -1)
         {
             perror("Failed to execute command\n");

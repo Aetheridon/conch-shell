@@ -1,9 +1,9 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=gnu17
 TARGET = conch
-SRCS = conch.c forkexec.c builtin.c
+SRCS = conch.c forkexec.c builtin.c terminal.c
 OBJS = $(SRCS:.c=.o)
-HEADERS = forkexec.h builtin.h
+HEADERS = forkexec.h builtin.h terminal.h
 
 all: $(TARGET)
 
