@@ -15,6 +15,14 @@ void tokenize(char **args, char *cmd) {
     
     while (token != NULL && arg_count < MAX_ARGS - 1)
     {
+
+        if (strcmp(token, "|") == 0)
+        {
+            args[arg_count++] = "|";
+            token = strtok(NULL, " ");
+            continue;
+        }
+
         if (strchr(token, '>') != NULL)
         {
             char *pos = strstr(token, ">>");
@@ -43,6 +51,31 @@ void tokenize(char **args, char *cmd) {
     args[arg_count] = NULL;
 }
 
+void split_commands(char **args, char **cmd1, char **cmd2)
+{
+    int i = 0, j = 0;
+    
+    while (args[i] != NULL && strcmp(args[i], "|") != 0)
+    {
+        cmd1[i] = args[i];
+        i++;
+    }
+
+    cmd1[i] = NULL;
+    
+    if (args[i] != NULL)
+    {
+        i++;
+        while (args[i] != NULL)
+        {
+            cmd2[j] = args[i];
+            i++;
+            j++;
+        }
+    }
+
+    cmd2[j] = NULL;
+}
 
 void parse_redirection(char **args, char **outfile, int *redirect_type)
 {
@@ -71,61 +104,144 @@ void parse_redirection(char **args, char **outfile, int *redirect_type)
 
 void startup_cmd(char **args)
 {
+    char *cmd1[MAX_ARGS];
+    char *cmd2[MAX_ARGS];
+
     char *outfile;
     int redirect_type;
+    
+    int has_pipe = 0;
 
-    parse_redirection(args, &outfile, &redirect_type);
-
-    pid_t pid = fork();
-
-    if (pid < 0)
+    for (int i = 0; args[i] != NULL; i++)
     {
-        perror("Failed to fork current process.\n");
-        exit(1);
+        if (strcmp(args[i], "|") == 0)
+        {
+            has_pipe = 1;
+            break;
+        }
     }
 
-    if (pid == 0) { // Child process
+    if (has_pipe) {
 
-        if (redirect_type != 0)
+        int pipefd[2];
+
+        if (pipe(pipefd) == -1)
         {
-            int flags, fd;
-                
-            if (redirect_type == REDIRECT_OUT)
-            {
-                flags = O_WRONLY | O_CREAT | O_TRUNC;
-            }
+            perror("pipe");
+            return;
+        }
 
-            else
-            {
-                flags = O_WRONLY | O_CREAT | O_APPEND;
-            }
-                
-            fd = open(outfile, flags, 0644);
+        split_commands(args, cmd1, cmd2);
+        
+        pid_t pid1 = fork();
 
-            if (fd < 0)
-            {
-                perror("Failed to open output file");
-                exit(1);
-            }
-                
-            if (dup2(fd, STDOUT_FILENO) < 0)
-            {
-                perror("Failed to redirect stdout");
-                exit(1);
-            }
-
-            close(fd);
+        if (pid1 < 0)
+        {
+            perror("fork");
+            return;
         }
         
-        if (execvp(args[0], args) == -1)
+        if (pid1 == 0)
         {
-            perror("Failed to execute command\n");
-            exit(1);
+            close(pipefd[0]);
+            dup2(pipefd[1], STDOUT_FILENO);
+            close(pipefd[1]);
+            
+            if (execvp(cmd1[0], cmd1) == -1)
+            {
+                perror("execvp");
+                exit(1);
+            }
         }
+
+        pid_t pid2 = fork();
+        if (pid2 < 0)
+        {
+            perror("fork");
+            return;
+        }
+        
+        if (pid2 == 0)
+        {
+            close(pipefd[1]);
+            dup2(pipefd[0], STDIN_FILENO);
+            close(pipefd[0]);
+            
+            parse_redirection(cmd2, &outfile, &redirect_type);
+            
+            if (redirect_type != 0)
+            {
+                int flags = (redirect_type == REDIRECT_OUT) ? 
+                    O_WRONLY | O_CREAT | O_TRUNC : 
+                    O_WRONLY | O_CREAT | O_APPEND;
+                
+                int fd = open(outfile, flags, 0644);
+
+                if (fd < 0)
+                {
+                    perror("open");
+                    exit(1);
+                }
+
+                dup2(fd, STDOUT_FILENO);
+                close(fd);
+            }
+            
+            if (execvp(cmd2[0], cmd2) == -1)
+            {
+                perror("execvp");
+                exit(1);
+            }
+        }
+
+        close(pipefd[0]);
+        close(pipefd[1]);
+
+        waitpid(pid1, NULL, 0);
+        waitpid(pid2, NULL, 0);
     }
 
     else 
     {
-        wait(NULL);
+        parse_redirection(args, &outfile, &redirect_type);
+        pid_t pid = fork();
+
+        if (pid < 0)
+        {
+            perror("fork");
+            return;
+        }
+
+        if (pid == 0)
+        {
+            if (redirect_type != 0)
+            {
+                int flags = (redirect_type == REDIRECT_OUT) ?
+                    O_WRONLY | O_CREAT | O_TRUNC :
+                    O_WRONLY | O_CREAT | O_APPEND;
+                
+                int fd = open(outfile, flags, 0644);
+                
+                if (fd < 0)
+                {
+                    perror("open");
+                    exit(1);
+                }
+                
+                dup2(fd, STDOUT_FILENO);
+                close(fd);
+            }
+            
+            if (execvp(args[0], args) == -1)
+            {
+                perror("execvp");
+                exit(1);
+            }
+        }
+
+        else
+        {
+            wait(NULL);
+        }
     }
 }
